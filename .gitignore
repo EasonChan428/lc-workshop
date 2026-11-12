@@ -1,0 +1,10 @@
+# 编译产物：.class 文件是 javac 生成的，不该进版本库
+*.class
+
+# IDE 的个人配置
+.idea/
+.vscode/
+
+# Windows / macOS 的系统垃圾文件
+Thumbs.db
+.DS_Store
