@@ -8,3 +8,6 @@
 # Windows / macOS 的系统垃圾文件
 Thumbs.db
 .DS_Store
+
+# Maven 构建产物
+target/
