@@ -11,3 +11,6 @@ Thumbs.db
 
 # Maven 构建产物
 target/
+
+# 程序生成的索引文件
+index.md

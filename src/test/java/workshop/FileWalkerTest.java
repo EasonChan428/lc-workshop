@@ -2,7 +2,10 @@ package workshop;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.nio.file.Path;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class FileWalkerTest {
 
@@ -21,5 +24,34 @@ class FileWalkerTest {
         assertEquals(-1, FileWalker.parseNumber("P27X9Bad.java"));
         assertEquals(-1, FileWalker.parseNumber("P000"));
         assertEquals(-1, FileWalker.parseNumber(null));
+    }
+
+    @Test
+    void 应该能从文件名提取标题() {
+        assertEquals("Two Sum", FileWalker.extractTitle("P0001TwoSum.java"));
+        assertEquals("Perfect Squares", FileWalker.extractTitle("P0279PerfectSquares.java"));
+        assertEquals("Longest Common Subsequence",
+                FileWalker.extractTitle("P1143LongestCommonSubsequence.java"));
+        assertEquals("", FileWalker.extractTitle("ListNode.java"));
+    }
+
+    @Test
+    void 索引行格式应该正确() {
+        assertEquals("| 279 | Perfect Squares | P0279PerfectSquares.java |",
+                FileWalker.buildRow(Path.of("dp/P0279PerfectSquares.java")));
+    }
+
+    @Test
+    void 索引应按题号排序并跳过非题目文件() {
+        List<Path> files = List.of(
+                Path.of("dp/P0322CoinChange.java"),
+                Path.of("array/P0001TwoSum.java"),
+                Path.of("common/ListNode.java"),
+                Path.of("dp/P0279PerfectSquares.java"));
+        String index = FileWalker.buildIndex(files);
+
+        assertTrue(index.contains("| 1 | Two Sum |"));
+        assertTrue(index.indexOf("| 279 |") < index.indexOf("| 322 |"));   // 按题号升序
+        assertFalse(index.contains("ListNode"));                           // 非题目文件被跳过
     }
 }
