@@ -54,4 +54,18 @@ class FileWalkerTest {
         assertTrue(index.indexOf("| 279 |") < index.indexOf("| 322 |"));   // 按题号升序
         assertFalse(index.contains("ListNode"));                           // 非题目文件被跳过
     }
+
+    @Test
+    void 不传参数时应该用默认值() {
+        assertEquals(Main.DEFAULT_ROOT, Main.resolveRoot(new String[]{}));
+        assertEquals(Main.DEFAULT_OUT, Main.resolveOut(new String[]{}));
+    }
+
+    @Test
+    void 传了参数时应该用传入的值() {
+        assertEquals(Path.of("D:\\other"), Main.resolveRoot(new String[]{"D:\\other"}));
+        assertEquals(Path.of("out.md"), Main.resolveOut(new String[]{"in.md", "out.md"}));
+        // 只传一个参数时，输出仍用默认值
+        assertEquals(Main.DEFAULT_OUT, Main.resolveOut(new String[]{"in.md"}));
+    }
 }

@@ -80,18 +80,4 @@ public class FileWalker {
                     .toList();
         }
     }
-
-    /** 入口只负责「拿路径 -> 调方法 -> 打印结果」 */
-    public static void main(String[] args) throws IOException {
-        Path root = Path.of("C:\\Users\\eason\\Desktop\\MyCode\\git\\src\\leetcode");
-        Path out = Path.of("index.md");
-
-        List<Path> files = findJavaFiles(root);
-        String content = buildIndex(files);
-
-        // 先打印到屏幕检查，确认没问题再落盘
-        System.out.println(content);
-        Files.writeString(out, content);
-        System.out.println("已写入：" + out.toAbsolutePath());
-    }
 }
