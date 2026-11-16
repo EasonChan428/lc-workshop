@@ -57,15 +57,49 @@ class FileWalkerTest {
 
     @Test
     void 不传参数时应该用默认值() {
-        assertEquals(Main.DEFAULT_ROOT, Main.resolveRoot(new String[]{}));
-        assertEquals(Main.DEFAULT_OUT, Main.resolveOut(new String[]{}));
+        Main.Options o = Main.parseArgs(new String[]{});
+        assertEquals(Main.DEFAULT_ROOT, o.root());
+        assertEquals(Main.DEFAULT_README, o.readme());
+        assertFalse(o.write());
     }
 
     @Test
-    void 传了参数时应该用传入的值() {
-        assertEquals(Path.of("D:\\other"), Main.resolveRoot(new String[]{"D:\\other"}));
-        assertEquals(Path.of("out.md"), Main.resolveOut(new String[]{"in.md", "out.md"}));
-        // 只传一个参数时，输出仍用默认值
-        assertEquals(Main.DEFAULT_OUT, Main.resolveOut(new String[]{"in.md"}));
+    void 传了参数和标志时应该正确解析() {
+        // 路径 + 标志混在一起，顺序不影响结果
+        Main.Options o = Main.parseArgs(new String[]{"D:\\other", "docs\\r.md", "--write"});
+        assertEquals(Path.of("D:\\other"), o.root());
+        assertEquals(Path.of("docs\\r.md"), o.readme());
+        assertTrue(o.write());
+
+        // 只传一个路径：README 用默认值，标志照样生效
+        Main.Options o2 = Main.parseArgs(new String[]{"--write", "D:\\only"});
+        assertEquals(Path.of("D:\\only"), o2.root());
+        assertEquals(Main.DEFAULT_README, o2.readme());
+        assertTrue(o2.write());
+    }
+
+    @Test
+    void 应该只替换标记之间的内容() {
+        String original = "# 标题\n<!-- INDEX:START -->\n旧内容\n<!-- INDEX:END -->\n结尾\n";
+        String updated = IndexInjector.replaceSection(original, "| 新表格 |\n");
+
+        assertTrue(updated.contains("| 新表格 |"));
+        assertFalse(updated.contains("旧内容"));          // 旧内容被换掉
+        assertTrue(updated.startsWith("# 标题"));          // 标记之前原样保留
+        assertTrue(updated.endsWith("结尾\n"));            // 标记之后原样保留
+    }
+
+    @Test
+    void 缺少标记时应抛异常() {
+        assertThrows(IllegalArgumentException.class,
+                () -> IndexInjector.replaceSection("# 没有标记的文件\n", "x\n"));
+    }
+
+    @Test
+    void 重复替换应该是幂等的() {
+        String original = "# T\n<!-- INDEX:START -->\n旧\n<!-- INDEX:END -->\nT\n";
+        String once = IndexInjector.replaceSection(original, "新\n");
+        String twice = IndexInjector.replaceSection(once, "新\n");
+        assertEquals(once, twice);                          // 再跑一次结果不变
     }
 }
