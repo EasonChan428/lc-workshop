@@ -102,4 +102,70 @@ class FileWalkerTest {
         String twice = IndexInjector.replaceSection(once, "新\n");
         assertEquals(once, twice);                          // 再跑一次结果不变
     }
+
+    @Test
+    void 应该能从路径提取主题() {
+        assertEquals("dp",
+                FileWalker.extractTopic(Path.of("C:\\x\\leetcode\\dp\\P0279PerfectSquares.java")));
+    }
+
+    @Test
+    void 应该能把文件解析成题目对象并按题号排序() {
+        List<Problem> ps = FileWalker.parseProblems(List.of(
+                Path.of("dp/P0322CoinChange.java"),
+                Path.of("array/P0001TwoSum.java"),
+                Path.of("common/ListNode.java")));
+
+        assertEquals(2, ps.size());                     // ListNode 被过滤掉
+        assertEquals(1, ps.get(0).number());
+        assertEquals("Two Sum", ps.get(0).title());
+        assertEquals("array", ps.get(0).topic());
+        assertEquals(322, ps.get(1).number());          // 按题号升序
+    }
+
+    @Test
+    void 检索应该匹配题号标题主题且忽略大小写() {
+        List<Problem> all = FileWalker.parseProblems(List.of(
+                Path.of("dp/P0279PerfectSquares.java"),
+                Path.of("array/P0001TwoSum.java"),
+                Path.of("dp/P0322CoinChange.java")));
+
+        assertEquals(1, FileWalker.search(all, "279").size());            // 题号
+        assertEquals(1, FileWalker.search(all, "perfect squares").size());// 标题
+        assertEquals(2, FileWalker.search(all, "DP").size());             // 主题，大小写不敏感
+        assertEquals(0, FileWalker.search(all, "matrix").size());         // 无匹配
+    }
+
+    @Test
+    void 子命令应该能被正确识别() {
+        Main.Options find = Main.parseArgs(new String[]{"find", "dp"});
+        assertEquals("find", find.command());
+        assertEquals("dp", find.keyword());
+
+        Main.Options noArgs = Main.parseArgs(new String[]{});
+        assertEquals("index", noArgs.command());                          // 默认命令
+
+        Main.Options justPath = Main.parseArgs(new String[]{"C:\\some\\dir"});
+        assertEquals("index", justPath.command());                        // 不是命令 → 当目录
+        assertEquals(Path.of("C:\\some\\dir"), justPath.root());
+    }
+
+    @Test
+    void 检索不应该因文件名拼接产生假阳性() {
+        // "validparentheses" 去掉空格后含 "dp"，但不该被 "dp" 命中
+        List<Problem> all = FileWalker.parseProblems(List.of(
+                Path.of("stack/P0020ValidParentheses.java"),
+                Path.of("dp/P0279PerfectSquares.java")));
+
+        assertEquals(1, FileWalker.search(all, "dp").size());
+        assertEquals(279, FileWalker.search(all, "dp").get(0).number());
+    }
+
+    @Test
+    void 连续大写字母不应该被拆开() {
+        assertEquals("Jump Game II", FileWalker.extractTitle("P0045JumpGameII.java"));
+        assertEquals("Two Sum", FileWalker.extractTitle("P0001TwoSum.java"));
+        assertEquals("Longest Common Subsequence",
+                FileWalker.extractTitle("P1143LongestCommonSubsequence.java"));
+    }
 }

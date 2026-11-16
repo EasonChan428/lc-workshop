@@ -38,8 +38,8 @@ public class FileWalker {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < camel.length(); i++) {
             char c = camel.charAt(i);
-            // 首字母前不插空格（i > 0），其余每个大写字母前插一个空格
-            if (i > 0 && Character.isUpperCase(c)) {
+            // 只有「大写且前一个是小写」才断词：JumpGameII -> Jump Game II
+            if (i > 0 && Character.isUpperCase(c) && Character.isLowerCase(camel.charAt(i - 1))) {
                 sb.append(' ');
             }
             sb.append(c);
@@ -68,6 +68,35 @@ public class FileWalker {
         }
         sb.append("\n共 ").append(sorted.size()).append(" 题\n");
         return sb.toString();
+    }
+
+    /** 从路径提取主题：...\leetcode\dp\P0279X.java -> "dp" */
+    public static String extractTopic(Path file) {
+        Path parent = file.getParent();
+        return parent == null ? "" : parent.getFileName().toString();
+    }
+
+    /** 把一组文件解析成题目对象，过滤掉非题目文件，按题号升序 */
+    public static List<Problem> parseProblems(List<Path> files) {
+        return files.stream()
+                .filter(p -> parseNumber(p.getFileName().toString()) > 0)
+                .map(p -> new Problem(
+                        parseNumber(p.getFileName().toString()),
+                        extractTitle(p.getFileName().toString()),
+                        extractTopic(p),
+                        p.getFileName().toString()))
+                .sorted(Comparator.comparingInt(Problem::number))
+                .toList();
+    }
+
+    /** 按关键词检索：题号精确 / 主题精确 / 标题包含，均忽略大小写 */
+    public static List<Problem> search(List<Problem> all, String keyword) {
+        String k = keyword.toLowerCase();
+        return all.stream()
+                .filter(p -> String.valueOf(p.number()).equals(k)          // 题号：精确
+                        || p.topic().equalsIgnoreCase(k)                    // 主题：精确
+                        || p.title().toLowerCase().contains(k))             // 标题：包含
+                .toList();
     }
 
     /** 找出 root 目录下所有 .java 文件，按路径排序返回 */
