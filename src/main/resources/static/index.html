@@ -17,37 +17,25 @@
         }
         * { box-sizing: border-box; }
         body {
-            margin: 0;
-            padding: 24px;
-            background: var(--bg);
-            color: var(--text);
-            font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-            font-size: 14px;
+            margin: 0; padding: 24px; background: var(--bg); color: var(--text);
+            font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; font-size: 14px;
         }
-        header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+        header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
         h1 { font-size: 20px; margin: 0; }
-        .root { color: var(--muted); font-size: 12px; word-break: break-all; }
+        .muted { color: var(--muted); }
         .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
         .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
         .card .label { color: var(--muted); font-size: 12px; }
         .card .value { font-size: 22px; font-weight: 600; margin-top: 2px; }
         .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 16px; }
-        .chip {
-            background: var(--card); border: 1px solid var(--line); border-radius: 999px;
-            padding: 3px 10px; font-size: 12px; cursor: pointer; color: var(--muted);
-        }
+        .chip { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; color: var(--muted); }
         .chip:hover { border-color: var(--accent); color: var(--accent); }
         .panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
-        .toolbar { display: flex; gap: 8px; padding: 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-        input[type=search] {
-            flex: 1 1 260px; padding: 8px 12px; border: 1px solid var(--line);
-            border-radius: 8px; font-size: 14px; outline: none;
-        }
-        input[type=search]:focus { border-color: var(--accent); }
-        button {
-            padding: 8px 14px; border: 1px solid var(--line); background: var(--card);
-            border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--text);
-        }
+        .toolbar { display: flex; gap: 8px; padding: 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; align-items: center; }
+        .toolbar.no-border { border-bottom: none; }
+        input[type=text], input[type=search] { flex: 1 1 260px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; outline: none; }
+        input[type=text]:focus, input[type=search]:focus { border-color: var(--accent); }
+        button { padding: 8px 14px; border: 1px solid var(--line); background: var(--card); border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--text); white-space: nowrap; }
         button:hover { border-color: var(--accent); color: var(--accent); }
         button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
         button.primary:hover { opacity: .9; color: #fff; }
@@ -60,24 +48,44 @@
         .tag { display: inline-block; background: var(--tag-bg); border-radius: 6px; padding: 1px 7px; margin: 1px 4px 1px 0; font-size: 12px; color: #334155; }
         .tag.zh { background: #fff7ed; color: #9a3412; }
         .empty { padding: 24px; text-align: center; color: var(--muted); }
-        .muted { color: var(--muted); }
         #similarPanel { margin-top: 16px; display: none; }
         #similarHead { padding: 12px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-        #similarBody { padding: 4px 0; }
-        .sim-row { display: flex; gap: 12px; padding: 8px 12px; align-items: baseline; }
+        .sim-row { display: flex; gap: 12px; padding: 8px 12px; align-items: baseline; flex-wrap: wrap; }
         .sim-row .shared { color: #9a3412; font-size: 12px; white-space: nowrap; }
         .badge { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
         .badge.gray { background: var(--tag-bg); color: var(--muted); }
         footer { margin-top: 20px; color: var(--muted); font-size: 12px; }
-        .clickable { cursor: pointer; }
+        /* 目录选择弹窗 */
+        #dirModal { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+        #dirModal.show { display: flex; }
+        .modal-box { background: var(--card); border-radius: 12px; width: min(760px, 100%); max-height: 82vh; display: flex; flex-direction: column; overflow: hidden; }
+        .modal-head { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+        .modal-path { padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: 13px; word-break: break-all; background: #fbfcfd; }
+        .modal-body { overflow: auto; flex: 1; }
+        .dir-row { display: flex; align-items: center; gap: 8px; padding: 9px 16px; border-bottom: 1px solid #f1f3f5; cursor: pointer; }
+        .dir-row:hover { background: var(--accent-soft); }
+        .dir-row .name { flex: 1; word-break: break-all; }
+        .dir-row .hint { font-size: 12px; color: #047857; background: #ecfdf5; border-radius: 6px; padding: 1px 7px; white-space: nowrap; }
+        .modal-foot { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+        .modal-foot .grow { flex: 1; font-size: 12px; color: var(--muted); align-self: center; }
     </style>
 </head>
 <body>
 
 <header>
     <h1>题解工坊</h1>
-    <span class="root" id="rootPath">加载中…</span>
+    <span class="muted" id="rootPath">加载中…</span>
 </header>
+
+<div class="panel" style="margin-bottom:16px;">
+    <div class="toolbar no-border">
+        <span class="muted" style="white-space:nowrap;">题库目录</span>
+        <input type="text" id="rootInput" placeholder="例如 D:/my-leetcode/src/leetcode">
+        <button id="btnBrowse">浏览…</button>
+        <button class="primary" id="btnApplyRoot">使用此目录</button>
+        <button id="btnReload">重新扫描</button>
+    </div>
+</div>
 
 <div class="cards">
     <div class="card"><div class="label">题目总数</div><div class="value" id="statTotal">-</div></div>
@@ -97,7 +105,6 @@
         <input type="search" id="keyword" placeholder="按题号 / 标题 / 主题 / 标签检索，例如 322、perfect、完全背包">
         <button class="primary" id="btnSearch">搜索</button>
         <button id="btnClear">清空</button>
-        <button id="btnReload">重新扫描</button>
     </div>
     <table>
         <thead>
@@ -116,10 +123,26 @@
     <div id="similarBody"></div>
 </div>
 
-<footer>数据来自 <code>GET /api/problems</code>、<code>GET /api/stats</code>；修改题库后点「重新扫描」。</footer>
+<footer>数据来自 <code>/api/problems</code>、<code>/api/stats</code>；改完题库点「重新扫描」。</footer>
+
+<!-- 目录选择弹窗 -->
+<div id="dirModal">
+    <div class="modal-box">
+        <div class="modal-head">
+            <strong>选择题库目录</strong>
+            <button id="btnCloseModal">关闭</button>
+        </div>
+        <div class="modal-path" id="modalPath">—</div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="modal-foot">
+            <span class="grow" id="modalHint"></span>
+            <button id="btnUseCurrent">使用「当前目录」</button>
+        </div>
+    </div>
+</div>
 
 <script>
-    const state = { keyword: "", topic: "" };
+    const state = { keyword: "", topic: "", currentDir: "" };
 
     async function getJson(url) {
         const resp = await fetch(url);
@@ -145,13 +168,17 @@
         document.getElementById("statTagged").textContent = s.tagged;
         document.getElementById("statCoverage").textContent = s.coveragePercent + "%";
         document.getElementById("statUntagged").textContent = s.untagged;
-        document.getElementById("rootPath").textContent = s.total ? "题库：" + (state.rootPath || "") : "";
 
         const topicBox = document.getElementById("topicChips");
         topicBox.innerHTML = "";
         Object.entries(s.byTopic).forEach(([topic, count]) => {
             const chip = el("span", "chip", topic + " · " + count);
-            chip.onclick = () => { state.topic = (state.topic === topic ? "" : topic); state.keyword = ""; document.getElementById("keyword").value = ""; loadProblems(); };
+            chip.onclick = () => {
+                state.topic = (state.topic === topic ? "" : topic);
+                state.keyword = "";
+                document.getElementById("keyword").value = "";
+                loadProblems();
+            };
             topicBox.appendChild(chip);
         });
 
@@ -159,7 +186,12 @@
         tagBox.innerHTML = "";
         Object.entries(s.tagFrequency).forEach(([tag, count]) => {
             const chip = el("span", "chip", tag + " · " + count);
-            chip.onclick = () => { state.topic = ""; state.keyword = tag; document.getElementById("keyword").value = tag; loadProblems(); };
+            chip.onclick = () => {
+                state.topic = "";
+                state.keyword = tag;
+                document.getElementById("keyword").value = tag;
+                loadProblems();
+            };
             tagBox.appendChild(chip);
         });
     }
@@ -167,18 +199,18 @@
     async function loadProblems() {
         const q = state.topic || state.keyword;
         const data = await getJson("/api/problems?q=" + encodeURIComponent(q));
-        state.rootPath = data.root;
+
         document.getElementById("rootPath").textContent = "题库：" + data.root;
+        if (document.activeElement !== document.getElementById("rootInput")) {
+            document.getElementById("rootInput").value = data.root;
+        }
 
         const tbody = document.getElementById("rows");
         tbody.innerHTML = "";
-        const list = state.topic
-            ? data.problems.filter(p => p.topic === state.topic)
-            : data.problems;
+        const list = state.topic ? data.problems.filter(p => p.topic === state.topic) : data.problems;
 
         list.forEach(p => {
             const tr = el("tr");
-
             tr.appendChild(el("td", "num", p.number));
             tr.appendChild(el("td", "topic", p.topic));
             tr.appendChild(el("td", null, p.title));
@@ -200,13 +232,11 @@
             tbody.appendChild(tr);
         });
 
-        document.getElementById("emptyHint").style.display = list.length === 0 ? "block" : "none";
-        if (list.length === 0 && data.total === 0) {
-            document.getElementById("emptyHint").textContent =
-                "题库为空：当前扫描目录是 " + data.root + "。请在 application.properties 里设置 workshop.root，或用 web.bat 把题库文件夹拖进来。";
-        } else {
-            document.getElementById("emptyHint").textContent = "没有匹配的题目";
-        }
+        const hint = document.getElementById("emptyHint");
+        hint.style.display = list.length === 0 ? "block" : "none";
+        hint.textContent = (list.length === 0 && data.total === 0)
+            ? "题库为空：当前扫描目录是 " + data.root + "。点上方「浏览…」选择你的题库目录。"
+            : "没有匹配的题目";
     }
 
     async function showSimilar(number) {
@@ -215,12 +245,9 @@
         panel.style.display = "block";
 
         const badge = document.getElementById("similarBadge");
-        const reasonText = { tags: "共享标签", topic: "同主题（该题还未打标签）", none: "无推荐" }[data.reason] || data.reason;
-        badge.textContent = reasonText;
+        badge.textContent = { tags: "共享标签", topic: "同主题（该题还未打标签）", none: "无推荐" }[data.reason] || data.reason;
         badge.className = "badge" + (data.reason === "tags" ? "" : " gray");
-
-        document.getElementById("similarTitle").textContent =
-            data.target.number + " · " + data.target.title;
+        document.getElementById("similarTitle").textContent = data.target.number + " · " + data.target.title;
 
         const body = document.getElementById("similarBody");
         body.innerHTML = "";
@@ -238,6 +265,96 @@
             });
         }
         panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    // ==================== 目录选择 ====================
+
+    function openDirModal() {
+        document.getElementById("dirModal").classList.add("show");
+        const current = document.getElementById("rootInput").value.trim()
+            || document.getElementById("rootPath").textContent.replace(/^题库：/, "");
+        browseTo(current);
+    }
+
+    async function browseTo(path) {
+        const body = document.getElementById("modalBody");
+        const pathLabel = document.getElementById("modalPath");
+        const hint = document.getElementById("modalHint");
+        body.innerHTML = "";
+        body.appendChild(el("div", "empty", "加载中…"));
+
+        try {
+            let listing;
+            if (!path) {
+                const roots = await getJson("/api/roots");
+                renderRoots(roots);
+                return;
+            }
+            listing = await getJson("/api/dirs?path=" + encodeURIComponent(path));
+            state.currentDir = listing.path;
+            pathLabel.textContent = listing.path;
+            hint.textContent = listing.looksLikeLeetCode ? "✔ 这个目录看起来就是题库" : "";
+            document.getElementById("btnUseCurrent").textContent = "使用「" + listing.path + "」";
+
+            body.innerHTML = "";
+            if (listing.parent) {
+                const up = el("div", "dir-row");
+                up.appendChild(el("span", "name", "⬆ 上一级"));
+                up.onclick = () => browseTo(listing.parent);
+                body.appendChild(up);
+            }
+            if (listing.dirs.length === 0) {
+                body.appendChild(el("div", "empty", "这个目录下没有子目录"));
+            }
+            listing.dirs.forEach(d => {
+                const row = el("div", "dir-row");
+                row.appendChild(el("span", "name", d.name));
+                if (d.looksLikeLeetCode) row.appendChild(el("span", "hint", "像题库"));
+                row.onclick = () => browseTo(d.path);
+                body.appendChild(row);
+            });
+        } catch (e) {
+            body.innerHTML = "";
+            const rootBar = el("div", "empty", "无法读取该目录：" + e.message + "，换个位置试试。");
+            body.appendChild(rootBar);
+            const rootBtn = el("button", "primary", "从常见入口重新选择");
+            rootBtn.style.margin = "0 auto 20px";
+            rootBtn.onclick = () => browseTo("");
+            body.appendChild(rootBtn);
+        }
+    }
+
+    function renderRoots(roots) {
+        const body = document.getElementById("modalBody");
+        document.getElementById("modalPath").textContent = "从常见位置开始：";
+        document.getElementById("modalHint").textContent = "";
+        body.innerHTML = "";
+        roots.forEach(r => {
+            const row = el("div", "dir-row");
+            row.appendChild(el("span", "name", r.name + "   " + r.path));
+            if (r.looksLikeLeetCode) row.appendChild(el("span", "hint", "像题库"));
+            row.onclick = () => browseTo(r.path);
+            body.appendChild(row);
+        });
+    }
+
+    async function applyRoot(path) {
+        const resp = await fetch("/api/root", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: path })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+            alert("切换失败：" + (data.error || resp.status));
+            return;
+        }
+        document.getElementById("dirModal").classList.remove("show");
+        state.topic = "";
+        state.keyword = "";
+        document.getElementById("keyword").value = "";
+        await loadStats();
+        await loadProblems();
     }
 
     document.getElementById("btnSearch").onclick = () => {
@@ -261,6 +378,20 @@
     document.getElementById("btnCloseSimilar").onclick = () => {
         document.getElementById("similarPanel").style.display = "none";
     };
+    document.getElementById("btnBrowse").onclick = openDirModal;
+    document.getElementById("btnCloseModal").onclick = () => {
+        document.getElementById("dirModal").classList.remove("show");
+    };
+    document.getElementById("btnUseCurrent").onclick = () => {
+        if (state.currentDir) applyRoot(state.currentDir);
+    };
+    document.getElementById("btnApplyRoot").onclick = () => {
+        const path = document.getElementById("rootInput").value.trim();
+        if (path) applyRoot(path);
+    };
+    document.getElementById("rootInput").addEventListener("keydown", e => {
+        if (e.key === "Enter") document.getElementById("btnApplyRoot").click();
+    });
 
     (async () => {
         try {

@@ -8,6 +8,7 @@ import workshop.Problem;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -21,7 +22,10 @@ import java.util.Optional;
 @Service
 public class ProblemService {
 
-    private final Path root;
+    /** 记住上次选择的题库目录（页面上选过一次，重启后仍然是它） */
+    static final String LAST_ROOT_FILE = ".lc-workshop-root";
+
+    private volatile Path root;
     private volatile List<Problem> cache;
 
     @Autowired
@@ -34,18 +38,64 @@ public class ProblemService {
         this.root = root;
     }
 
-    /** 配置了就用配置；否则自动探测：当前目录下的 src/leetcode，再退化为当前目录 */
+    /**
+     * 优先级：配置/环境变量 > 上次页面选的目录 > 自动探测（当前目录/src/leetcode，否则当前目录）
+     */
     static Path resolveRoot(String configuredRoot) {
         if (configuredRoot != null && !configuredRoot.isBlank()) {
-            return Path.of(configuredRoot.trim());
+            return Path.of(configuredRoot.trim()).toAbsolutePath().normalize();
+        }
+        Path remembered = readRememberedRoot();
+        if (remembered != null) {
+            return remembered;
         }
         Path cwd = Path.of(".").toAbsolutePath().normalize();
         Path nested = cwd.resolve("src").resolve("leetcode");
         return Files.isDirectory(nested) ? nested : cwd;
     }
 
+    static Path readRememberedRoot() {
+        Path file = Path.of(LAST_ROOT_FILE);
+        if (!Files.isRegularFile(file)) {
+            return null;
+        }
+        try {
+            String text = Files.readString(file, StandardCharsets.UTF_8).trim();
+            if (text.isEmpty()) {
+                return null;
+            }
+            Path p = Path.of(text);
+            return Files.isDirectory(p) ? p : null;
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private void remember(Path newRoot) {
+        try {
+            Files.writeString(Path.of(LAST_ROOT_FILE), newRoot.toString(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            System.err.println("警告: 无法记住题库目录 -> " + e.getMessage());
+        }
+    }
+
     public Path root() {
         return root;
+    }
+
+    /** 切换题库目录：校验 -> 记住 -> 清缓存 -> 重新扫描 */
+    public synchronized void switchRoot(String newRoot) throws IOException {
+        if (newRoot == null || newRoot.isBlank()) {
+            throw new IllegalArgumentException("目录不能为空");
+        }
+        Path target = Path.of(newRoot.trim()).toAbsolutePath().normalize();
+        if (!Files.isDirectory(target)) {
+            throw new IllegalArgumentException("目录不存在: " + target);
+        }
+        this.root = target;
+        this.cache = null;
+        remember(target);
+        reload();
     }
 
     /** 首次访问时加载，之后走缓存 */
@@ -57,7 +107,7 @@ public class ProblemService {
         return snapshot;
     }
 
-    /** 重新扫描磁盘（页面上「刷新」按钮会调它） */
+    /** 重新扫描磁盘（页面上「重新扫描」按钮会调它） */
     public synchronized List<Problem> reload() {
         try {
             List<Problem> loaded = FileWalker.loadProblems(root);

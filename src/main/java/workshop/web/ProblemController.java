@@ -4,11 +4,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import workshop.Problem;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -82,5 +85,38 @@ public class ProblemController {
                 "ok", true,
                 "root", service.root().toString(),
                 "total", service.all().size());
+    }
+
+    /** 浏览目录：GET /api/dirs?path=D:/xxx（path 为空则从常见入口开始） */
+    @GetMapping("/dirs")
+    public DirBrowser.Listing dirs(@RequestParam(name = "path", defaultValue = "") String path) throws IOException {
+        if (path == null || path.isBlank()) {
+            Path cwd = service.root();
+            return DirBrowser.list(cwd);
+        }
+        return DirBrowser.list(Path.of(path.trim()));
+    }
+
+    /** 常见入口：盘符、用户目录、当前目录 */
+    @GetMapping("/roots")
+    public List<DirBrowser.Entry> roots() {
+        return DirBrowser.suggestions();
+    }
+
+    /** 切换题库目录：POST /api/root {"path": "D:/my-leetcode/src/leetcode"} */
+    @PostMapping("/root")
+    public ResponseEntity<?> switchRoot(@RequestBody Map<String, String> body) {
+        String path = body == null ? null : body.get("path");
+        try {
+            service.switchRoot(path);
+            return ResponseEntity.ok(Map.of(
+                    "ok", true,
+                    "root", service.root().toString(),
+                    "total", service.all().size()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "error", e.getMessage()));
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().body(Map.of("ok", false, "error", e.getMessage()));
+        }
     }
 }

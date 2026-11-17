@@ -88,6 +88,29 @@
                     </arguments>
                 </configuration>
             </plugin>
+
+            <!--
+              打两个包：
+                1) 普通 jar（清单里是 workshop.Main）—— 命令行工具，保持原样
+                2) *-web.jar（Spring Boot 可执行包）—— 双击/单命令即可启动 Web 端
+              classifier=web 让它成为附加产物，不会覆盖上面的 CLI jar。
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+                <configuration>
+                    <mainClass>workshop.web.LcWorkshopApplication</mainClass>
+                    <classifier>web</classifier>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>

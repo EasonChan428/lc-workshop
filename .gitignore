@@ -23,3 +23,6 @@ lc-workshop.properties
 
 # VS Code Java 扩展自动生成的工程元数据
 .github/
+
+# Web 端记住的上次题库目录
+.lc-workshop-root

@@ -46,16 +46,25 @@ Windows 上也可以直接双击：
 
 ### Web 界面（v2）
 
-```bash
-# 方式一：在题库仓库根目录启动（自动探测 src/leetcode）
-mvn compile exec:exec
+打包后会得到**两个 jar**：
 
-# 方式二：显式指定题库目录
-set WORKSHOP_ROOT=D:/my-leetcode/src/leetcode
-mvn compile exec:exec
+| 产物 | 用途 |
+|---|---|
+| `lc-workshop-0.1.0-SNAPSHOT.jar` | 命令行工具（`java -jar` 仍是 CLI） |
+| `lc-workshop-0.1.0-SNAPSHOT-web.jar` | 可独立运行的 Web 端（内嵌 Tomcat，**不需要装 Maven**） |
+
+最简单的启动方式：
+
+```bash
+mvn clean package                 # 打出两个 jar
+java -jar target/lc-workshop-0.1.0-SNAPSHOT-web.jar
 ```
 
-打开 <http://localhost:8080>。Windows 上双击 `web.bat` 即可（把题库文件夹拖到 `web.bat` 上也能指定目录）。
+Windows 上直接**双击 `web.bat`**（也可把题库文件夹拖到它上面指定目录），启动后会自动打开浏览器到 <http://localhost:8080>。
+
+开发时（改代码即时生效）用：`mvn compile exec:exec`。
+
+**题库目录可以在页面上选**：点「浏览…」→ 服务端目录树里逐级点选 → 「使用此目录」。选过的目录会记在 `.lc-workshop-root` 里，下次启动自动沿用。（浏览器的 JS 无法获取真实文件路径，所以目录浏览由后端提供。）
 
 | 接口 | 说明 |
 |---|---|
@@ -63,9 +72,14 @@ mvn compile exec:exec
 | `GET /api/problems/{number}` | 单道题，不存在返回 404 |
 | `GET /api/problems/{number}/similar` | 相似题推荐，`reason` 为 `tags` / `topic` / `none` |
 | `GET /api/stats` | 主题分布、标签频次、覆盖率、未打标签题号 |
-| `POST /api/reload` | 重新扫描磁盘（页面「重新扫描」按钮用它） |
+| `GET /api/dirs?path=…` | 浏览服务端目录（选择题库用） |
+| `GET /api/roots` | 常见入口：盘符 / 用户目录 / 当前目录 |
+| `POST /api/root` | 切换题库目录 `{"path": "…"}` |
+| `POST /api/reload` | 重新扫描磁盘 |
 
-页面支持：结果表格、按主题筛选、点标签直接检索、每题「推荐」按钮弹出相似题面板。
+页面支持：结果表格、按主题筛选、点标签直接检索、每题「推荐」按钮弹出相似题面板、切换题库目录。
+
+> **安全默认**：Web 端只监听 `127.0.0.1`（本机），因为这个工具会读取本地文件系统。想给局域网其他设备用，把 `application.properties` 里的 `server.address` 改成 `0.0.0.0` 并自行承担风险。
 
 ### 用法示例
 
