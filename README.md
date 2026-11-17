@@ -54,7 +54,7 @@ java -jar lc-workshop.jar
 java -jar lc-workshop.jar --write
 
 # 3. 指定题库目录和 README
-java -jar lc-workshop.jar index "D:/MyCode/git/src/leetcode" "D:/MyCode/git/README.md" --write
+java -jar lc-workshop.jar index "D:/my-leetcode/src/leetcode" "D:/my-leetcode/README.md" --write
 
 # 4. 检索
 java -jar lc-workshop.jar find 完全背包
@@ -104,8 +104,8 @@ class P0322CoinChange {
 复制 `lc-workshop.properties.example` 为 `lc-workshop.properties`（放在 jar 同级目录或用户主目录）：
 
 ```properties
-root=D:/MyCode/git/src/leetcode
-readme=D:/MyCode/git/README.md
+root=D:/my-leetcode/src/leetcode
+readme=D:/my-leetcode/README.md
 ```
 
 不配置时自动探测：当前目录下的 `src/leetcode`，否则用当前目录。
