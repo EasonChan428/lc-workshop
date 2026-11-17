@@ -17,3 +17,9 @@ index.md
 
 # 工具生成的备份
 *.bak
+
+# 本地配置（含个人机器路径，不该进版本库）
+lc-workshop.properties
+
+# VS Code Java 扩展自动生成的工程元数据
+.github/

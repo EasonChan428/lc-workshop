@@ -1,0 +1,8 @@
+# 复制本文件为 lc-workshop.properties（放在 jar 同级目录或用户主目录 ~/.lc-workshop.properties），按需修改。
+# 路径建议用正斜杠 / 或双反斜杠 \\ 书写。
+#
+# 题库根目录：不填则自动探测（当前目录下的 src/leetcode，否则用当前目录）
+root=D:/MyCode/git/src/leetcode
+
+# 要更新的 README：不填则用当前目录的 README.md
+readme=D:/MyCode/git/README.md
