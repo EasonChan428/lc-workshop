@@ -69,6 +69,14 @@ public class ProblemController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /** 某道题的源码（只读，用于页面复习） */
+    @GetMapping("/problems/{number}/code")
+    public ResponseEntity<ProblemService.CodeFile> code(@PathVariable("number") int number) {
+        return service.codeOf(number)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/stats")
     public StatsResponse stats() {
         List<Problem> all = service.all();

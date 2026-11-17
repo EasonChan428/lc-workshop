@@ -94,6 +94,50 @@ class ProblemServiceTest {
     }
 
     @Test
+    void 应该能读取单题源码() throws IOException {
+        ProblemService service = service();
+
+        var code = service.codeOf(322);
+        assertTrue(code.isPresent());
+        assertEquals(322, code.get().number());
+        assertEquals("P0322CoinChange.java", code.get().fileName());
+        assertTrue(code.get().code().contains("完全背包"));
+        assertFalse(code.get().truncated());
+
+        // 不存在的题号
+        assertTrue(service.codeOf(9999).isEmpty());
+    }
+
+    @Test
+    void 切换目录后源码读取应该跟着切换() throws IOException {
+        ProblemService service = service();
+        assertTrue(service.codeOf(322).isPresent());
+
+        // 换到一个只有 1 号题的目录
+        Path other = temp.resolve("other");
+        Files.createDirectories(other);
+        Files.writeString(other.resolve("P0001TwoSum.java"), "class P0001TwoSum {}\n", StandardCharsets.UTF_8);
+
+        service.switchRoot(other.toString());
+        assertTrue(service.codeOf(322).isEmpty());          // 旧题库的题没了
+        assertEquals(1, service.all().size());
+        assertTrue(service.codeOf(1).isPresent());
+    }
+
+    @Test
+    void 切换目录应该写进指定的状态文件而不是项目目录() throws IOException {
+        Path stateFile = temp.resolve("state.txt");
+        ProblemService service = new ProblemService(temp, stateFile);
+
+        write("array/P0001TwoSum.java", "class P0001TwoSum {}\n");
+        service.switchRoot(temp.toString());
+
+        assertTrue(Files.exists(stateFile));
+        assertEquals(temp.toAbsolutePath().normalize().toString(),
+                Files.readString(stateFile, StandardCharsets.UTF_8).trim());
+    }
+
+    @Test
     void 未配置目录时应该自动探测() {
         assertNotNull(ProblemService.resolveRoot(""));
         assertNotNull(ProblemService.resolveRoot(null));

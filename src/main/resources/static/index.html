@@ -54,6 +54,29 @@
         .sim-row .shared { color: #9a3412; font-size: 12px; white-space: nowrap; }
         .badge { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
         .badge.gray { background: var(--tag-bg); color: var(--muted); }
+        /* 代码面板 */
+        #codePanel { margin-top: 16px; display: none; }
+        #codeHead { padding: 12px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+        #codeHead .meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .code-scroll { max-height: 60vh; overflow: auto; border-radius: 0 0 10px 10px; }
+        .code-grid { display: grid; grid-template-columns: auto 1fr; min-width: min-content; }
+        .code-gutter {
+            position: sticky; left: 0; z-index: 1; padding: 12px 10px 12px 14px;
+            text-align: right; color: #9ca3af; background: #fbfcfd; border-right: 1px solid var(--line);
+            font-family: Consolas, "Cascadia Mono", monospace; font-size: 13px; line-height: 1.55;
+            white-space: pre; user-select: none;
+        }
+        .code-area {
+            margin: 0; padding: 12px 16px; white-space: pre; tab-size: 4;
+            font-family: Consolas, "Cascadia Mono", monospace; font-size: 13px; line-height: 1.55;
+        }
+        .code-area .k { color: #7c3aed; }
+        .code-area .s { color: #b45309; }
+        .code-area .c { color: #15803d; font-style: italic; }
+        .code-area .n { color: #0369a1; }
+        .code-note { padding: 8px 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+        td.actions { white-space: nowrap; }
+        td.actions button { padding: 4px 10px; font-size: 13px; }
         footer { margin-top: 20px; color: var(--muted); font-size: 12px; }
         /* 目录选择弹窗 */
         #dirModal { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
@@ -113,6 +136,28 @@
         <tbody id="rows"></tbody>
     </table>
     <div class="empty" id="emptyHint" style="display:none;">没有匹配的题目</div>
+</div>
+
+<div class="panel" id="codePanel">
+    <div id="codeHead">
+        <div class="meta">
+            <span class="badge">代码</span>
+            <strong id="codeTitle"></strong>
+            <span class="muted" id="codeFile"></span>
+            <span id="codeTags"></span>
+        </div>
+        <div class="meta">
+            <button id="btnCopyCode">复制代码</button>
+            <button id="btnCloseCode">关闭</button>
+        </div>
+    </div>
+    <div class="code-scroll">
+        <div class="code-grid">
+            <div class="code-gutter" id="codeGutter"></div>
+            <pre class="code-area"><code id="codeArea"></code></pre>
+        </div>
+    </div>
+    <div class="code-note" id="codeNote" style="display:none;"></div>
 </div>
 
 <div class="panel" id="similarPanel">
@@ -223,10 +268,14 @@
             }
             tr.appendChild(tagTd);
 
-            const actionTd = el("td");
-            const btn = el("button", null, "推荐");
-            btn.onclick = () => showSimilar(p.number);
-            actionTd.appendChild(btn);
+            const actionTd = el("td", "actions");
+            const codeBtn = el("button", null, "代码");
+            codeBtn.onclick = () => showCode(p);
+            actionTd.appendChild(codeBtn);
+            const simBtn = el("button", null, "推荐");
+            simBtn.style.marginLeft = "6px";
+            simBtn.onclick = () => showSimilar(p.number);
+            actionTd.appendChild(simBtn);
             tr.appendChild(actionTd);
 
             tbody.appendChild(tr);
@@ -266,6 +315,86 @@
         }
         panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
+
+    // ==================== 代码查看（只读） ====================
+
+    const JAVA_TOKEN = /\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\b(?:public|private|protected|static|final|abstract|class|interface|record|enum|extends|implements|void|int|long|short|byte|char|boolean|double|float|if|else|for|while|do|switch|case|default|return|new|this|super|null|true|false|break|continue|try|catch|finally|throw|throws|import|package|instanceof)\b|\b\d+\b/g;
+
+    function escHtml(s) {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    /** 极简 Java 高亮：注释/字符串/关键字/数字。先切词再转义，避免 XSS 与误替换。 */
+    function highlightJava(code) {
+        let out = "", last = 0, m;
+        JAVA_TOKEN.lastIndex = 0;
+        while ((m = JAVA_TOKEN.exec(code)) !== null) {
+            out += escHtml(code.slice(last, m.index));
+            const token = m[0];
+            let cls = "k";
+            if (token.startsWith("//") || token.startsWith("/*")) cls = "c";
+            else if (token.startsWith("\"") || token.startsWith("'")) cls = "s";
+            else if (/^\d+$/.test(token)) cls = "n";
+            out += '<span class="' + cls + '">' + escHtml(token) + '</span>';
+            last = m.index + token.length;
+        }
+        out += escHtml(code.slice(last));
+        return out;
+    }
+
+    let currentCode = "";
+
+    async function showCode(problem) {
+        let data;
+        try {
+            data = await getJson("/api/problems/" + problem.number + "/code");
+        } catch (e) {
+            alert("读取源码失败：" + e.message);
+            return;
+        }
+        currentCode = data.code;
+
+        document.getElementById("codeTitle").textContent = problem.number + " · " + problem.title;
+        document.getElementById("codeFile").textContent = data.fileName;
+
+        const tagBox = document.getElementById("codeTags");
+        tagBox.innerHTML = "";
+        problem.tags.forEach(t => tagBox.appendChild(tagSpan(t)));
+
+        document.getElementById("codeArea").innerHTML = highlightJava(data.code);
+
+        const lines = data.code.split("\n").length;
+        let gutter = "";
+        for (let i = 1; i <= lines; i++) gutter += i + "\n";
+        document.getElementById("codeGutter").textContent = gutter;
+
+        const note = document.getElementById("codeNote");
+        if (data.truncated) {
+            note.style.display = "block";
+            note.textContent = "文件较大，只显示了前 " + data.code.length + " 个字符。";
+        } else {
+            note.style.display = "none";
+        }
+
+        const panel = document.getElementById("codePanel");
+        panel.style.display = "block";
+        panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    document.getElementById("btnCopyCode").onclick = async () => {
+        const btn = document.getElementById("btnCopyCode");
+        try {
+            await navigator.clipboard.writeText(currentCode);
+            const old = btn.textContent;
+            btn.textContent = "已复制 ✓";
+            setTimeout(() => { btn.textContent = old; }, 1200);
+        } catch (e) {
+            alert("复制失败（浏览器不允许），可以手动选中代码复制。");
+        }
+    };
+    document.getElementById("btnCloseCode").onclick = () => {
+        document.getElementById("codePanel").style.display = "none";
+    };
 
     // ==================== 目录选择 ====================
 

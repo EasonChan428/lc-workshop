@@ -11,6 +11,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,17 +26,37 @@ public class ProblemService {
     /** 记住上次选择的题库目录（页面上选过一次，重启后仍然是它） */
     static final String LAST_ROOT_FILE = ".lc-workshop-root";
 
+    /** 单题源码返回上限（字符数），避免异常大文件把页面卡死 */
+    static final int MAX_CODE_CHARS = 200_000;
+
     private volatile Path root;
     private volatile List<Problem> cache;
+    /** 文件名 -> 绝对路径，用于「查看源码」 */
+    private volatile Map<String, Path> fileByName = Map.of();
+    /** 「记住上次目录」写到哪个文件；null 表示不持久化（测试用，避免污染真实状态） */
+    private final Path stateFile;
+
+    /** 一道题的源码 */
+    public record CodeFile(int number, String fileName, String code, boolean truncated) { }
 
     @Autowired
     public ProblemService(@Value("${workshop.root:}") String configuredRoot) {
-        this.root = resolveRoot(configuredRoot);
+        this(resolveRoot(configuredRoot), defaultStateFile());
     }
 
-    /** 测试用构造器：直接指定题库目录 */
+    /** 测试用构造器：指定题库目录且不写状态文件 */
     public ProblemService(Path root) {
+        this(root, null);
+    }
+
+    /** 内部/测试用：可以指定状态文件位置，避免污染项目根目录 */
+    ProblemService(Path root, Path stateFile) {
         this.root = root;
+        this.stateFile = stateFile;
+    }
+
+    static Path defaultStateFile() {
+        return Path.of(System.getProperty("workshop.state-file", LAST_ROOT_FILE));
     }
 
     /**
@@ -72,8 +93,11 @@ public class ProblemService {
     }
 
     private void remember(Path newRoot) {
+        if (stateFile == null) {
+            return;                     // 测试构造器：不写状态文件
+        }
         try {
-            Files.writeString(Path.of(LAST_ROOT_FILE), newRoot.toString(), StandardCharsets.UTF_8);
+            Files.writeString(stateFile, newRoot.toString(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             System.err.println("警告: 无法记住题库目录 -> " + e.getMessage());
         }
@@ -110,11 +134,43 @@ public class ProblemService {
     /** 重新扫描磁盘（页面上「重新扫描」按钮会调它） */
     public synchronized List<Problem> reload() {
         try {
+            List<Path> files = FileWalker.findJavaFiles(root);
+            Map<String, Path> byName = new HashMap<>();
+            for (Path f : files) {
+                byName.put(f.getFileName().toString(), f.toAbsolutePath().normalize());
+            }
             List<Problem> loaded = FileWalker.loadProblems(root);
-            cache = loaded;
+            this.fileByName = byName;
+            this.cache = loaded;
             return loaded;
         } catch (IOException e) {
             throw new UncheckedIOException("读取题库失败: " + root, e);
+        }
+    }
+
+    /**
+     * 读取某道题的源码（只读，用于页面复习）。
+     * 路径来自本次扫描结果，天然限定在题库目录内，不会因为请求参数被带到别处。
+     */
+    public Optional<CodeFile> codeOf(int number) {
+        Optional<Problem> problem = byNumber(number);
+        if (problem.isEmpty()) {
+            return Optional.empty();
+        }
+        Problem p = problem.get();
+        Path file = fileByName.get(p.fileName());
+        if (file == null || !Files.isRegularFile(file)) {
+            return Optional.empty();
+        }
+        try {
+            String text = Files.readString(file, StandardCharsets.UTF_8);
+            boolean truncated = text.length() > MAX_CODE_CHARS;
+            if (truncated) {
+                text = text.substring(0, MAX_CODE_CHARS);
+            }
+            return Optional.of(new CodeFile(p.number(), p.fileName(), text, truncated));
+        } catch (IOException e) {
+            return Optional.empty();
         }
     }
 
