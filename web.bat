@@ -1,31 +1,61 @@
 @echo off
 chcp 65001 >nul
+setlocal
 cd /d "%~dp0"
 
 rem ============================================================
-rem  题解工坊 Web 端启动器（双击运行）
-rem    - 用法一：直接双击，自动探测题库目录
-rem    - 用法二：把题库文件夹拖到本文件上，用拖进来的目录当题库根
-rem  前提：本机装了 Java 21+；jar 已用 mvn clean package 打好
+rem  LC Workshop - Web launcher  (double-click to run)
+rem    Requires: Java 21+
+rem    Usage:  double-click, or drag a problem folder onto this file
 rem ============================================================
 
-set JAR=target\lc-workshop-0.1.0-SNAPSHOT-web.jar
+title LC Workshop Web
 
+set "JAR=target\lc-workshop-0.1.0-SNAPSHOT-web.jar"
+set "PORT=8080"
+
+rem ---- 1) Already running? ----
+netstat -ano | findstr ":%PORT%" | findstr "LISTENING" >nul
+if not errorlevel 1 (
+    echo [INFO] Port %PORT% is already in use - maybe LC Workshop is already running.
+    echo        Opening http://localhost:%PORT% in your browser...
+    start "" "http://localhost:%PORT%"
+    echo.
+    echo        If that is not this app, stop the other process first:
+    echo          netstat -ano ^| findstr :%PORT%
+    echo          taskkill /PID ^<pid^> /F
+    pause
+    exit /b 0
+)
+
+rem ---- 2) Build if needed ----
 if not exist "%JAR%" (
-    echo [提示] 没找到 %JAR%，尝试用 Maven 现场打包...
+    echo [INFO] %JAR% not found, building with Maven...
     call mvn -B -q clean package -DskipTests
     if not exist "%JAR%" (
-        echo [错误] 打包失败。请确认已安装 Maven，或手动执行： mvn clean package
+        echo.
+        echo [ERROR] Build failed. Install Maven, or run: mvn clean package
         pause
         exit /b 1
     )
 )
 
-if not "%~1"=="" set WORKSHOP_ROOT=%~1
+rem ---- 3) Optional folder passed by drag and drop ----
+if not "%~1"=="" set "WORKSHOP_ROOT=%~1"
 
-echo 题库目录：%WORKSHOP_ROOT%（为空则自动探测 / 使用上次在页面上选择的目录）
-echo 正在启动，稍后会自动打开浏览器： http://localhost:8080
-echo 关闭服务请按 Ctrl+C
 echo.
+if defined WORKSHOP_ROOT (
+    echo Problem folder : %WORKSHOP_ROOT%
+) else (
+    echo Problem folder : auto-detect / last chosen in the page
+)
+echo Starting... browser will open at http://localhost:%PORT%
+echo Press Ctrl+C in this window to stop the server.
+echo.
+
 java -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -jar "%JAR%"
+
+echo.
+echo [INFO] Server stopped. Exit code: %ERRORLEVEL%
 pause
+endlocal
