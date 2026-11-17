@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -228,5 +229,16 @@ public class FileWalker {
                     .sorted()
                     .toList();
         }
+    }
+
+    /** 一步到位：扫描目录 -> 解析题目 -> 贴上标签（需要读磁盘） */
+    public static List<Problem> loadProblems(Path root) throws IOException {
+        List<Path> files = findJavaFiles(root);
+        List<Problem> base = parseProblems(files);
+        Map<String, List<String>> tagsByFile = new HashMap<>();
+        for (Path f : files) {
+            tagsByFile.put(f.getFileName().toString(), extractTags(f));
+        }
+        return applyTags(base, tagsByFile);
     }
 }

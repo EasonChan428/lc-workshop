@@ -8,7 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -319,16 +318,9 @@ public class Main {
 
     // ==================== 公共 ====================
 
-    /** 扫描 + 解析 + 贴标签：需要读磁盘的部分全集中在这里 */
+    /** 扫描 + 解析 + 贴标签（委托给 FileWalker，CLI 与 Web 共用同一套逻辑） */
     static List<Problem> loadProblems(Path root) throws IOException {
-        List<Path> files = FileWalker.findJavaFiles(root);
-        List<Problem> base = FileWalker.parseProblems(files);
-
-        Map<String, List<String>> tagsByFile = new HashMap<>();
-        for (Path f : files) {
-            tagsByFile.put(f.getFileName().toString(), FileWalker.extractTags(f));
-        }
-        return FileWalker.applyTags(base, tagsByFile);
+        return FileWalker.loadProblems(root);
     }
 
     /** 统一校验：扫描目录必须存在 */

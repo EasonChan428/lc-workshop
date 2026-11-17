@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>题解工坊</title>
+    <style>
+        :root {
+            --bg: #f7f8fa;
+            --card: #ffffff;
+            --line: #e5e7eb;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --accent: #2563eb;
+            --accent-soft: #eff6ff;
+            --tag-bg: #f1f5f9;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 24px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+            font-size: 14px;
+        }
+        header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+        h1 { font-size: 20px; margin: 0; }
+        .root { color: var(--muted); font-size: 12px; word-break: break-all; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
+        .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+        .card .label { color: var(--muted); font-size: 12px; }
+        .card .value { font-size: 22px; font-weight: 600; margin-top: 2px; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 16px; }
+        .chip {
+            background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+            padding: 3px 10px; font-size: 12px; cursor: pointer; color: var(--muted);
+        }
+        .chip:hover { border-color: var(--accent); color: var(--accent); }
+        .panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+        .toolbar { display: flex; gap: 8px; padding: 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+        input[type=search] {
+            flex: 1 1 260px; padding: 8px 12px; border: 1px solid var(--line);
+            border-radius: 8px; font-size: 14px; outline: none;
+        }
+        input[type=search]:focus { border-color: var(--accent); }
+        button {
+            padding: 8px 14px; border: 1px solid var(--line); background: var(--card);
+            border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--text);
+        }
+        button:hover { border-color: var(--accent); color: var(--accent); }
+        button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        button.primary:hover { opacity: .9; color: #fff; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+        th { color: var(--muted); font-weight: 500; font-size: 12px; background: #fbfcfd; }
+        tbody tr:hover { background: var(--accent-soft); }
+        td.num { font-variant-numeric: tabular-nums; color: var(--muted); width: 64px; }
+        td.topic { color: var(--muted); width: 110px; }
+        .tag { display: inline-block; background: var(--tag-bg); border-radius: 6px; padding: 1px 7px; margin: 1px 4px 1px 0; font-size: 12px; color: #334155; }
+        .tag.zh { background: #fff7ed; color: #9a3412; }
+        .empty { padding: 24px; text-align: center; color: var(--muted); }
+        .muted { color: var(--muted); }
+        #similarPanel { margin-top: 16px; display: none; }
+        #similarHead { padding: 12px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        #similarBody { padding: 4px 0; }
+        .sim-row { display: flex; gap: 12px; padding: 8px 12px; align-items: baseline; }
+        .sim-row .shared { color: #9a3412; font-size: 12px; white-space: nowrap; }
+        .badge { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+        .badge.gray { background: var(--tag-bg); color: var(--muted); }
+        footer { margin-top: 20px; color: var(--muted); font-size: 12px; }
+        .clickable { cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>题解工坊</h1>
+    <span class="root" id="rootPath">加载中…</span>
+</header>
+
+<div class="cards">
+    <div class="card"><div class="label">题目总数</div><div class="value" id="statTotal">-</div></div>
+    <div class="card"><div class="label">已打标签</div><div class="value" id="statTagged">-</div></div>
+    <div class="card"><div class="label">标签覆盖率</div><div class="value" id="statCoverage">-</div></div>
+    <div class="card"><div class="label">未打标签</div><div class="value" id="statUntagged">-</div></div>
+</div>
+
+<div class="muted" style="font-size:12px;">主题分布（点一下可筛选）</div>
+<div class="chips" id="topicChips"></div>
+
+<div class="muted" style="font-size:12px;">标签（点一下可检索）</div>
+<div class="chips" id="tagChips"></div>
+
+<div class="panel">
+    <div class="toolbar">
+        <input type="search" id="keyword" placeholder="按题号 / 标题 / 主题 / 标签检索，例如 322、perfect、完全背包">
+        <button class="primary" id="btnSearch">搜索</button>
+        <button id="btnClear">清空</button>
+        <button id="btnReload">重新扫描</button>
+    </div>
+    <table>
+        <thead>
+        <tr><th>题号</th><th>主题</th><th>标题</th><th>标签</th><th>相似题</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+    </table>
+    <div class="empty" id="emptyHint" style="display:none;">没有匹配的题目</div>
+</div>
+
+<div class="panel" id="similarPanel">
+    <div id="similarHead">
+        <div><span class="badge" id="similarBadge">相似题</span> <strong id="similarTitle"></strong></div>
+        <button id="btnCloseSimilar">关闭</button>
+    </div>
+    <div id="similarBody"></div>
+</div>
+
+<footer>数据来自 <code>GET /api/problems</code>、<code>GET /api/stats</code>；修改题库后点「重新扫描」。</footer>
+
+<script>
+    const state = { keyword: "", topic: "" };
+
+    async function getJson(url) {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(url + " -> " + resp.status);
+        return resp.json();
+    }
+
+    function el(tag, cls, text) {
+        const node = document.createElement(tag);
+        if (cls) node.className = cls;
+        if (text != null) node.textContent = text;
+        return node;
+    }
+
+    function tagSpan(text) {
+        const isZh = /[\u4e00-\u9fa5]/.test(text);
+        return el("span", isZh ? "tag zh" : "tag", text);
+    }
+
+    async function loadStats() {
+        const s = await getJson("/api/stats");
+        document.getElementById("statTotal").textContent = s.total;
+        document.getElementById("statTagged").textContent = s.tagged;
+        document.getElementById("statCoverage").textContent = s.coveragePercent + "%";
+        document.getElementById("statUntagged").textContent = s.untagged;
+        document.getElementById("rootPath").textContent = s.total ? "题库：" + (state.rootPath || "") : "";
+
+        const topicBox = document.getElementById("topicChips");
+        topicBox.innerHTML = "";
+        Object.entries(s.byTopic).forEach(([topic, count]) => {
+            const chip = el("span", "chip", topic + " · " + count);
+            chip.onclick = () => { state.topic = (state.topic === topic ? "" : topic); state.keyword = ""; document.getElementById("keyword").value = ""; loadProblems(); };
+            topicBox.appendChild(chip);
+        });
+
+        const tagBox = document.getElementById("tagChips");
+        tagBox.innerHTML = "";
+        Object.entries(s.tagFrequency).forEach(([tag, count]) => {
+            const chip = el("span", "chip", tag + " · " + count);
+            chip.onclick = () => { state.topic = ""; state.keyword = tag; document.getElementById("keyword").value = tag; loadProblems(); };
+            tagBox.appendChild(chip);
+        });
+    }
+
+    async function loadProblems() {
+        const q = state.topic || state.keyword;
+        const data = await getJson("/api/problems?q=" + encodeURIComponent(q));
+        state.rootPath = data.root;
+        document.getElementById("rootPath").textContent = "题库：" + data.root;
+
+        const tbody = document.getElementById("rows");
+        tbody.innerHTML = "";
+        const list = state.topic
+            ? data.problems.filter(p => p.topic === state.topic)
+            : data.problems;
+
+        list.forEach(p => {
+            const tr = el("tr");
+
+            tr.appendChild(el("td", "num", p.number));
+            tr.appendChild(el("td", "topic", p.topic));
+            tr.appendChild(el("td", null, p.title));
+
+            const tagTd = el("td");
+            if (p.tags.length === 0) {
+                tagTd.appendChild(el("span", "muted", "—"));
+            } else {
+                p.tags.forEach(t => tagTd.appendChild(tagSpan(t)));
+            }
+            tr.appendChild(tagTd);
+
+            const actionTd = el("td");
+            const btn = el("button", null, "推荐");
+            btn.onclick = () => showSimilar(p.number);
+            actionTd.appendChild(btn);
+            tr.appendChild(actionTd);
+
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById("emptyHint").style.display = list.length === 0 ? "block" : "none";
+        if (list.length === 0 && data.total === 0) {
+            document.getElementById("emptyHint").textContent =
+                "题库为空：当前扫描目录是 " + data.root + "。请在 application.properties 里设置 workshop.root，或用 web.bat 把题库文件夹拖进来。";
+        } else {
+            document.getElementById("emptyHint").textContent = "没有匹配的题目";
+        }
+    }
+
+    async function showSimilar(number) {
+        const data = await getJson("/api/problems/" + number + "/similar");
+        const panel = document.getElementById("similarPanel");
+        panel.style.display = "block";
+
+        const badge = document.getElementById("similarBadge");
+        const reasonText = { tags: "共享标签", topic: "同主题（该题还未打标签）", none: "无推荐" }[data.reason] || data.reason;
+        badge.textContent = reasonText;
+        badge.className = "badge" + (data.reason === "tags" ? "" : " gray");
+
+        document.getElementById("similarTitle").textContent =
+            data.target.number + " · " + data.target.title;
+
+        const body = document.getElementById("similarBody");
+        body.innerHTML = "";
+        if (data.items.length === 0) {
+            body.appendChild(el("div", "empty", "没有找到相似题"));
+        } else {
+            data.items.forEach(item => {
+                const row = el("div", "sim-row");
+                row.appendChild(el("span", "num", String(item.problem.number)));
+                row.appendChild(el("span", "muted", item.problem.topic));
+                row.appendChild(el("span", null, item.problem.title));
+                if (item.sharedTags > 0) row.appendChild(el("span", "shared", "共享 " + item.sharedTags + " 个标签"));
+                item.problem.tags.forEach(t => row.appendChild(tagSpan(t)));
+                body.appendChild(row);
+            });
+        }
+        panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    document.getElementById("btnSearch").onclick = () => {
+        state.topic = "";
+        state.keyword = document.getElementById("keyword").value.trim();
+        loadProblems();
+    };
+    document.getElementById("keyword").addEventListener("keydown", e => {
+        if (e.key === "Enter") document.getElementById("btnSearch").click();
+    });
+    document.getElementById("btnClear").onclick = () => {
+        state.keyword = ""; state.topic = "";
+        document.getElementById("keyword").value = "";
+        loadProblems();
+    };
+    document.getElementById("btnReload").onclick = async () => {
+        await fetch("/api/reload", { method: "POST" });
+        await loadStats();
+        await loadProblems();
+    };
+    document.getElementById("btnCloseSimilar").onclick = () => {
+        document.getElementById("similarPanel").style.display = "none";
+    };
+
+    (async () => {
+        try {
+            await loadStats();
+            await loadProblems();
+        } catch (e) {
+            document.getElementById("rootPath").textContent = "加载失败：" + e.message;
+        }
+    })();
+</script>
+</body>
+</html>

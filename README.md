@@ -44,6 +44,29 @@ Windows 上也可以直接双击：
 - `run.bat` —— 用默认参数运行（**把文件夹拖到它上面**即可扫描该目录）
 - `index.bat` —— 一键更新 README 索引（等价于 `index --write`）
 
+### Web 界面（v2）
+
+```bash
+# 方式一：在题库仓库根目录启动（自动探测 src/leetcode）
+mvn compile exec:exec
+
+# 方式二：显式指定题库目录
+set WORKSHOP_ROOT=D:/my-leetcode/src/leetcode
+mvn compile exec:exec
+```
+
+打开 <http://localhost:8080>。Windows 上双击 `web.bat` 即可（把题库文件夹拖到 `web.bat` 上也能指定目录）。
+
+| 接口 | 说明 |
+|---|---|
+| `GET /api/problems?q=关键词` | 题目列表（题号 / 标题 / 主题 / 标签检索） |
+| `GET /api/problems/{number}` | 单道题，不存在返回 404 |
+| `GET /api/problems/{number}/similar` | 相似题推荐，`reason` 为 `tags` / `topic` / `none` |
+| `GET /api/stats` | 主题分布、标签频次、覆盖率、未打标签题号 |
+| `POST /api/reload` | 重新扫描磁盘（页面「重新扫描」按钮用它） |
+
+页面支持：结果表格、按主题筛选、点标签直接检索、每题「推荐」按钮弹出相似题面板。
+
 ### 用法示例
 
 ```bash
@@ -132,12 +155,20 @@ readme=D:/my-leetcode/README.md
 
 ```
 src/main/java/workshop/
-├── Main.java           入口：参数解析、子命令分发、IO
-├── FileWalker.java     纯逻辑：文件名解析、标签解析、检索、相似题、统计
-├── IndexInjector.java  只替换 README 的标记区间
-└── Problem.java        领域对象（record）：题号/标题/主题/文件名/标签
+├── Main.java               CLI 入口：参数解析、子命令分发、IO
+├── FileWalker.java         纯逻辑：文件名解析、标签解析、检索、相似题、统计
+├── IndexInjector.java      只替换 README 的标记区间
+├── Problem.java            领域对象（record）：题号/标题/主题/文件名/标签
+└── web/
+    ├── LcWorkshopApplication.java  Web 入口（Spring Boot）
+    ├── ProblemService.java         加载缓存题库，复用 FileWalker
+    └── ProblemController.java      REST 接口
+src/main/resources/
+├── application.properties         端口与题库目录配置
+└── static/index.html              单页前端（原生 JS，无构建步骤）
 src/test/java/workshop/
-└── FileWalkerTest.java 20 个单元测试
+├── FileWalkerTest.java            20 个单元测试
+└── web/ProblemServiceTest.java    6 个服务层测试
 ```
 
 设计上刻意把「能测的」和「不能测的」分开：**除了 `findJavaFiles` / `extractTags` 和 `Main` 里的写法逻辑，其余全是纯函数**，所以 20 个测试几乎不需要碰磁盘。
