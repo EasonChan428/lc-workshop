@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import workshop.Problem;
+import workshop.ai.AiConfig;
+import workshop.ai.AiException;
+import workshop.ai.TagWriter;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -121,6 +124,49 @@ public class ProblemController {
                     "ok", true,
                     "root", service.root().toString(),
                     "total", service.all().size()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "error", e.getMessage()));
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().body(Map.of("ok", false, "error", e.getMessage()));
+        }
+    }
+
+    // ==================== AI ====================
+
+    /** AI 配置状态（密钥永远只返回掩码） */
+    @GetMapping("/ai/status")
+    public Map<String, Object> aiStatus() {
+        AiConfig config = service.aiConfig();
+        return Map.of(
+                "enabled", config.enabled(),
+                "baseUrl", config.baseUrl(),
+                "model", config.model(),
+                "key", config.maskedKey());
+    }
+
+    /** 让模型给某道题建议标签（只建议，不写文件） */
+    @PostMapping("/ai/suggest-tags/{number}")
+    public ResponseEntity<?> suggestTags(@PathVariable("number") int number) {
+        try {
+            return ResponseEntity.ok(service.suggestTags(number));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "error", e.getMessage()));
+        } catch (AiException e) {
+            return ResponseEntity.status(502).body(Map.of("ok", false, "error", e.getMessage()));
+        }
+    }
+
+    /** 把人工确认后的标签写回源码（带备份） */
+    @PostMapping("/ai/apply-tags/{number}")
+    public ResponseEntity<?> applyTags(@PathVariable("number") int number,
+                                      @RequestBody Map<String, List<String>> body) {
+        List<String> tags = body == null ? null : body.get("tags");
+        try {
+            TagWriter.ApplyResult result = service.applyTags(number, tags);
+            return ResponseEntity.ok(Map.of(
+                    "changed", result.changed(),
+                    "file", result.file().toString(),
+                    "backup", result.backup() == null ? "" : result.backup().toString()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("ok", false, "error", e.getMessage()));
         } catch (IOException e) {

@@ -71,13 +71,44 @@ Windows 上直接**双击 `web.bat`**（也可把题库文件夹拖到它上面�
 | `GET /api/problems?q=关键词` | 题目列表（题号 / 标题 / 主题 / 标签检索） |
 | `GET /api/problems/{number}` | 单道题，不存在返回 404 |
 | `GET /api/problems/{number}/similar` | 相似题推荐，`reason` 为 `tags` / `topic` / `none` |
+| `GET /api/problems/{number}/code` | 单题源码（只读，用于复习） |
 | `GET /api/stats` | 主题分布、标签频次、覆盖率、未打标签题号 |
 | `GET /api/dirs?path=…` | 浏览服务端目录（选择题库用） |
 | `GET /api/roots` | 常见入口：盘符 / 用户目录 / 当前目录 |
 | `POST /api/root` | 切换题库目录 `{"path": "…"}` |
 | `POST /api/reload` | 重新扫描磁盘 |
+| `GET /api/ai/status` | AI 是否可用（密钥永远只返回掩码） |
+| `POST /api/ai/suggest-tags/{number}` | 让模型建议解法标签（**只建议，不写文件**） |
+| `POST /api/ai/apply-tags/{number}` | 把人工确认后的标签写回源码 `{"tags": [...]}`，自动备份 |
 
-页面支持：结果表格、按主题筛选、点标签直接检索、每题「推荐」按钮弹出相似题面板、切换题库目录。
+页面支持：结果表格、按主题筛选、点标签直接检索、「代码」按钮查看源码（行号 + 轻量 Java 高亮）、「AI 建议标签」按钮、切换题库目录。
+
+### AI 辅助标注标签
+
+点「代码」→ 面板里「AI 建议标签」→ 模型读完代码给出 1~3 个解法标签 → 点选确认 → 「写回文件」（自动生成 `.bak` 备份）。
+
+**配置**（二选一，密钥永不入库、打印时自动打码）：
+
+```bash
+# 方式一：本地文件（推荐本地开发用）
+cp ai.properties.example ai.properties   # 然后填入 key
+
+# 方式二：环境变量（优先级更高，适合 CI）
+set AI_API_KEY=sk-xxxx
+set AI_BASE_URL=https://api.deepseek.com
+set AI_MODEL=deepseek-chat
+```
+
+任何 **OpenAI 兼容**的模型服务都能用，换厂商只改 `base-url` 与 `model`：
+
+| 厂商 | base-url | model 示例 |
+|---|---|---|
+| DeepSeek | `https://api.deepseek.com` | `deepseek-chat` |
+| 通义千问 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` |
+| 智谱 GLM | `https://open.bigmodel.cn/api/paas/v4` | `glm-4-flash` |
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
+
+**为什么不直接让 AI 改文件**：模型输出不可靠（可能带 markdown 围栏、可能编造标签），所以流程强制「模型只提建议 → 人确认 → 程序写回」。解析与校验（`TagSuggester.parseTags`）和写回（`TagWriter`）都是纯函数，有专门的离线测试覆盖。
 
 > **安全默认**：Web 端只监听 `127.0.0.1`（本机），因为这个工具会读取本地文件系统。想给局域网其他设备用，把 `application.properties` 里的 `server.address` 改成 `0.0.0.0` 并自行承担风险。
 

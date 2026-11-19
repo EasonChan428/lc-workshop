@@ -5,6 +5,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import workshop.FileWalker;
 import workshop.Problem;
+import workshop.ai.AiClient;
+import workshop.ai.AiConfig;
+import workshop.ai.TagSuggester;
+import workshop.ai.TagWriter;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -172,6 +176,49 @@ public class ProblemService {
         } catch (IOException e) {
             return Optional.empty();
         }
+    }
+
+    // ==================== AI：标签建议与写回 ====================
+
+    /** 每次调用都重新读配置，改了 ai.properties 不用重启服务 */
+    public AiConfig aiConfig() {
+        return AiConfig.load();
+    }
+
+    public record TagSuggestion(int number, String title, List<String> currentTags,
+                                List<String> suggestions) { }
+
+    /**
+     * 让模型给某道题建议标签（只建议，不写文件）。
+     * 未配置密钥或调用失败时抛 AiException，由 Controller 转成合适的状态码。
+     */
+    public TagSuggestion suggestTags(int number) {
+        Problem p = byNumber(number)
+                .orElseThrow(() -> new IllegalArgumentException("没有这道题: " + number));
+        CodeFile code = codeOf(number)
+                .orElseThrow(() -> new IllegalArgumentException("读不到源码: " + number));
+
+        TagSuggester suggester = new TagSuggester(new AiClient(aiConfig()));
+        List<String> suggestions = suggester.suggest(p.number(), p.title(), p.topic(), code.code());
+        return new TagSuggestion(p.number(), p.title(), p.tags(), suggestions);
+    }
+
+    /** 把人工确认过的标签写回源码文件（带 .bak 备份），随后重新扫描题库 */
+    public TagWriter.ApplyResult applyTags(int number, List<String> tags) throws IOException {
+        Problem p = byNumber(number)
+                .orElseThrow(() -> new IllegalArgumentException("没有这道题: " + number));
+        if (tags == null || tags.isEmpty()) {
+            throw new IllegalArgumentException("标签列表不能为空");
+        }
+        Path file = fileByName.get(p.fileName());
+        if (file == null || !Files.isRegularFile(file)) {
+            throw new IllegalArgumentException("找不到源码文件: " + p.fileName());
+        }
+        TagWriter.ApplyResult result = TagWriter.applyToFile(file, tags);
+        if (result.changed()) {
+            reload();
+        }
+        return result;
     }
 
     public List<Problem> search(String keyword) {

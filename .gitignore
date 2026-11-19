@@ -26,3 +26,7 @@ lc-workshop.properties
 
 # Web 端记住的上次题库目录
 .lc-workshop-root
+
+# 本地 AI 密钥配置（绝不要提交）
+ai.properties
+*.bak.ain

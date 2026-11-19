@@ -147,6 +147,7 @@
             <span id="codeTags"></span>
         </div>
         <div class="meta">
+            <button id="btnAiTags">AI 建议标签</button>
             <button id="btnCopyCode">复制代码</button>
             <button id="btnCloseCode">关闭</button>
         </div>
@@ -158,6 +159,15 @@
         </div>
     </div>
     <div class="code-note" id="codeNote" style="display:none;"></div>
+    <div id="aiBox" style="display:none; border-top:1px solid var(--line); padding:12px;">
+        <div class="muted" style="font-size:12px; margin-bottom:8px;" id="aiHint"></div>
+        <div class="chips" id="aiChips" style="margin:0 0 10px;"></div>
+        <div class="meta" style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="primary" id="btnApplyTags">写回文件</button>
+            <button id="btnCancelAi">取消</button>
+            <span class="muted" id="aiStatus" style="font-size:12px; align-self:center;"></span>
+        </div>
+    </div>
 </div>
 
 <div class="panel" id="similarPanel">
@@ -353,6 +363,9 @@
             return;
         }
         currentCode = data.code;
+        currentProblem = problem;
+        document.getElementById("aiBox").style.display = "none";
+        document.getElementById("aiStatus").textContent = "";
 
         document.getElementById("codeTitle").textContent = problem.number + " · " + problem.title;
         document.getElementById("codeFile").textContent = data.fileName;
@@ -395,6 +408,100 @@
     document.getElementById("btnCloseCode").onclick = () => {
         document.getElementById("codePanel").style.display = "none";
     };
+
+    // ==================== AI 建议标签 ====================
+
+    let currentProblem = null;
+    let aiSuggested = [];
+
+    document.getElementById("btnAiTags").onclick = () => suggestTags();
+    document.getElementById("btnCancelAi").onclick = () => {
+        document.getElementById("aiBox").style.display = "none";
+    };
+    document.getElementById("btnApplyTags").onclick = () => applyTags();
+
+    async function suggestTags() {
+        if (!currentProblem) return;
+        const box = document.getElementById("aiBox");
+        const hint = document.getElementById("aiHint");
+        const chips = document.getElementById("aiChips");
+        const status = document.getElementById("aiStatus");
+
+        box.style.display = "block";
+        chips.innerHTML = "";
+        status.textContent = "";
+        hint.textContent = "正在调用模型分析这道题的解法……（需要几秒）";
+
+        try {
+            const resp = await fetch("/api/ai/suggest-tags/" + currentProblem.number, { method: "POST" });
+            const data = await resp.json();
+            if (!resp.ok) {
+                hint.textContent = "AI 调用失败：" + (data.error || resp.status);
+                hint.style.color = "#b91c1c";
+                return;
+            }
+            hint.style.color = "";
+            aiSuggested = data.suggestions || [];
+            if (aiSuggested.length === 0) {
+                hint.textContent = "模型没有给出可用标签（可以重试或手动添加）。";
+                return;
+            }
+            hint.textContent = "AI 建议（点击可取消选择）· 当前已有标签：" +
+                ((data.currentTags || []).join("、") || "无");
+            aiSuggested.forEach(tag => {
+                const chip = el("span", "chip", tag);
+                chip.style.borderColor = "var(--accent)";
+                chip.style.color = "var(--accent)";
+                chip.dataset.selected = "1";
+                chip.onclick = () => {
+                    const on = chip.dataset.selected === "1";
+                    chip.dataset.selected = on ? "0" : "1";
+                    chip.style.borderColor = on ? "" : "var(--accent)";
+                    chip.style.color = on ? "" : "var(--accent)";
+                    chip.style.opacity = on ? "0.45" : "1";
+                };
+                chips.appendChild(chip);
+            });
+        } catch (e) {
+            hint.textContent = "AI 调用异常：" + e.message;
+            hint.style.color = "#b91c1c";
+        }
+    }
+
+    async function applyTags() {
+        if (!currentProblem) return;
+        const selected = Array.from(document.querySelectorAll("#aiChips .chip"))
+            .filter(c => c.dataset.selected === "1")
+            .map(c => c.textContent);
+        const status = document.getElementById("aiStatus");
+        if (selected.length === 0) {
+            status.textContent = "至少要选一个标签";
+            return;
+        }
+        status.textContent = "写入中…";
+        try {
+            const resp = await fetch("/api/ai/apply-tags/" + currentProblem.number, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tags: selected })
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                status.textContent = "写入失败：" + (data.error || resp.status);
+                return;
+            }
+            status.textContent = data.changed
+                ? "已写入（备份：" + (data.backup || "").split("\\").pop() + "）"
+                : "内容无变化，未写入";
+            await loadStats();
+            await loadProblems();
+            // 重新打开一次，显示更新后的标签
+            const updated = (await getJson("/api/problems?q=" + currentProblem.number)).problems[0];
+            if (updated) showCode(updated);
+        } catch (e) {
+            status.textContent = "写入异常：" + e.message;
+        }
+    }
 
     // ==================== 目录选择 ====================
 
